@@ -12,7 +12,7 @@ using UnityEditor;
 public class Weapon : MonoBehaviour
 {
     static RaycastHit[] s_HitInfoBuffer = new RaycastHit[8];
-    
+    private ImpactManager impactManager;
     public enum TriggerType
     {
         Auto,
@@ -93,7 +93,7 @@ public class Weapon : MonoBehaviour
     public WeaponState CurrentState => m_CurrentState;
     public int ClipContent => m_ClipContent;
     public Controller Owner => m_Owner;
-
+    private int bvalue = 0;
     Controller m_Owner;
     
     Animator m_Animator;
@@ -131,6 +131,7 @@ public class Weapon : MonoBehaviour
     public GameObject scopeOvrlay;
     void Awake()
     {
+        impactManager = GameObject.FindObjectOfType<ImpactManager>();
         scopeOvrlay = GameObject.FindGameObjectWithTag("scopeOverLay");
         if (scopeOvrlay) {
             scopeOvrlay.SetActive(false);
@@ -233,7 +234,12 @@ public class Weapon : MonoBehaviour
             return;
         
         m_ClipContent -= 1;
-        
+        if (m_ClipContent==0)
+        {
+            impactManager.ClipsizeText.SetActive(true);
+
+            impactManager.InvokeTheEvent(impactManager.m_points);
+        }
         m_ShotTimer = fireRate;
 
         if(AmmoDisplay)
@@ -267,7 +273,6 @@ public class Weapon : MonoBehaviour
 
     void RaycastShot()
     {
-
         //compute the ratio of our spread angle over the fov to know in viewport space what is the possible offset from center
         float spreadRatio = advancedSettings.spreadAngle / Controller.Instance.MainCamera.fieldOfView;
 
@@ -280,15 +285,15 @@ public class Weapon : MonoBehaviour
         if (Physics.Raycast(r, out hit, 1000.0f, ~(1 << 9), QueryTriggerInteraction.Ignore))
         {
             Renderer renderer = hit.collider.GetComponentInChildren<Renderer>();
-            ImpactManager im= ImpactManager.Instance;
             if (hit.transform.gameObject.tag == "Burgler")
             {
-                im.ImpactData(hit.point, hit.normal, renderer == null ? null : renderer.sharedMaterial);
-
-                im.InvokeTheEvent(hit.transform.gameObject.GetComponent<Burgler>().getValue());
-
-            }
-           
+                impactManager.ImpactData(hit.point, hit.normal, renderer == null ? null : renderer.sharedMaterial);
+                Burgler burgler = hit.transform.gameObject.GetComponent<Burgler>();
+                CustomAgent customAgent = hit.transform.gameObject.GetComponent<CustomAgent>();
+                bvalue = burgler.getValue();
+                customAgent.DieEffect();
+                StartCoroutine(DelayPopup());
+            }           
 
             //if too close, the trail effect would look weird if it arced to hit the wall, so only correct it if far
             if (hit.distance > 5.0f)
@@ -332,6 +337,12 @@ public class Weapon : MonoBehaviour
                 renderer = trail
             });
         }*/
+    }
+
+    IEnumerator DelayPopup()
+    {
+        yield return new WaitForSeconds(2f);
+        impactManager.InvokeTheEvent(bvalue);
     }
 
     void ProjectileShot()
@@ -397,7 +408,7 @@ public class Weapon : MonoBehaviour
     public void Reset() {
         print("it is called");
         m_ClipContent=3;
-
+        impactManager.ClipsizeText.SetActive(false);
         if (AmmoDisplay)
             AmmoDisplay.UpdateAmount(m_ClipContent, clipSize);
         WeaponInfoUI.Instance.UpdateClipInfo(this);
