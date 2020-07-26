@@ -29,6 +29,7 @@ public class TrackSpawner : MonoBehaviour
     Dictionary<string, Hurdle[]> m_player_pow = new Dictionary<string, Hurdle[]>();
     int turn;
     bool ready, askingPlayer;
+    public bool StartCountdown = false;
 
     ResetWeapon resetWeapon = new ResetWeapon();
     float trackDistance = 3.8f;
@@ -49,8 +50,9 @@ public class TrackSpawner : MonoBehaviour
        
         turn = 1;
         ready = true;
-        askingPlayer = true;
-        Ready_popup.GetComponentInChildren<Text>().text = "Are you Ready Player_"+turn;
+        //askingPlayer = true;
+        //Ready_popup.GetComponentInChildren<Text>().text = "Are you Ready Player_"+turn;
+        StartCoroutine(StartGame());
         EventManager.AddShootListener(movePlayerListener);
         EventManager.AddReloadWeaponInvoker(this);
         
@@ -166,12 +168,19 @@ public class TrackSpawner : MonoBehaviour
     {
         if (ready&&!askingPlayer)
         {
-            Ready_popup.GetComponentInChildren<Text>().text = "Are you Ready Player_" + turn;
-            Ready_popup.gameObject.SetActive(true);
-            askingPlayer = true;
-        }
-        
+            StartCoroutine(StartGame());
+        }        
     }
+
+    IEnumerator StartGame()
+    {
+        Ready_popup.GetComponentInChildren<Text>().text = "Are you Ready Player_" + turn;
+        Ready_popup.gameObject.SetActive(true);
+        askingPlayer = true;
+        yield return new WaitForSeconds(2f);
+        ReadyButtonPressed();
+    }
+
     void movePlayerListener(int stepsToMove) {
         print("movePlayerListener");
         if (!ready) {
@@ -288,6 +297,7 @@ public class TrackSpawner : MonoBehaviour
         gameObject.GetComponent<SwitchCamera>().ShootCameraEnable(true);
         Controller.Instance.DisplayCursor(false);
         resetWeapon.Invoke();
+        StartCountdown = true;
        // GameObject.FindGameObjectWithTag("Weapon").GetComponent<Weapon>().Reset();
     }
 
